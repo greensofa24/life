@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Conway's Game Of Life</title>
+<style>
+body {
+overflow: hidden;
+}
+
+canvas {
+position: absolute;
+top: 0;
+left: 0;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+const ctx = canvas.getContext("2d");
+
+var grid = [
+[0, 1, 0],
+[0, 1, 0],
+[0, 1, 0]
+];
+
+setInterval(function(){update()}, 10);
+
+function rect(x, y, width, height, color) {
+this.x = x;
+this.y = y;
+this.width = width;
+this.height = height;
+ctx.fillStyle = color;
+ctx.fillRect(x, y, width, height);
+this.draw = function(){
+ctx.fillStyle = color;
+ctx.fillRect(this.x, this.y, this.width, this.height);
+}
+}
+
+function evolve() {
+for (let i in grid) {
+for (let j in grid[i]) {
+
+if (grid[i][j]) {
+let neighbours = 0;
+if (i - 1 >= 0 && j - 1 >= 0) {
+if (grid[i - 1][j - 1]) {
+neighbours += 1;
+}
+}
+if (i - 1 >= 0) {
+if (grid[i - 1][j]) {
+neighbours += 1;
+}
+}
+if (i - 1 >= 0 && j + 1 < grid[i].length) {
+if (grid[i - 1][j + 1]) {
+neighbours += 1;
+}
+}
+if (j - 1 >= 0) {
+if (grid[i][j - 1]) {
+neighbours += 1;
+}
+}
+if (j + 1 < grid[i].length) {
+if (grid[i][j + 1]) {
+neighbours += 1;
+}
+}/*
+if (i + 1 < grid.length && j - 1 >= 0) {
+if (grid[i + 1][j - 1]) {
+neighbours += 1;
+}
+}
+if (i + 1 < grid.length && j - 1 >= 0) {
+if (grid[i + 1][j]) {
+neighbours += 1;
+}
+}
+if (i + 1 < grid.length && j + 1 < grid[i].length) {
+if (grid[i + 1][j + 1]) {
+neighbours += 1;
+}[[[[[[[[2	
+}
+if (neighbours != 2 || 3) {
+grid[1][1] = 0;
+}*/
+
+}
+}
+}
+}
+
+function update() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+evolve();
+for (let i in grid) {
+for (let j in grid[i]) {
+if (grid[i][j]) {
+rect(j * 10, i * 10, 10, 10);
+}
+}
+}
+}
+
+canvas.addEventListener("click", (event) => {
+for (let i in grid) {
+for (let j in grid[i]) {
+if (event.offsetX >= j * 10 && event.offsetX < j * 10 + 10 && event.offsetY >= i * 10 && event.offsetY < i * 10 + 10) {
+if (grid[i][j]) {
+grid[i][j] = 0;
+} else {
+grid[i][j] = 1;
+}
+}
+}
+}
+});
+</script>
+
+</body>
+</html>
+<!--no comment-->

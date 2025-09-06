@@ -1,128 +1,287 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Conway's Game Of Life</title>
+<title>Conway's Game of Life</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
+
 body {
 overflow: hidden;
+font-family: "Ubuntu";
+font-size: 15px;
 }
 
 canvas {
 position: absolute;
-top: 0;
-left: 0;
+top: 0px;
+left: 0px;
+}
+
+hr {
+visibility: hidden;
+margin-top: 4px;
+margin-bottom: 0px;
+}
+
+button {
+font-family: inherit;
+}
+
+input {
+width: 61px;
+}
+
+.advanced {
+float: right;
+visibility: hidden;
 }
 </style>
 </head>
 <body>
 
 <canvas id="canvas"></canvas>
+<div></div>
+
+<hr id="spacer">
+<label>Width: </label>
+<input id="width" value=40 type="number" min=0 max=100>
+<button style="float: right;" onclick="for (let e of document.getElementsByClassName('advanced')) {
+e.style.visibility = visible ? 'hidden' : 'visible';
+}
+document.getElementById('arrow').innerText = visible ? '▼' : '▲';
+visible = !visible;">Advanced <span id="arrow" style="font-size:12px;">▼</span></button>
+<hr>
+<label>Height: </label>
+<input id="height" value=40 type="number" min=0 max=100>
+<div class="advanced">
+<label>Cell Size: </label>
+<input id="cellSize" value=10 type="number" min=0 max=100>
+</div>
+<hr>
+<label>Tickspeed: </label>
+<input id="tickspeed" value=10 type="number" min=0 max=5000>
+<label>tps</label>
+<div class="advanced">
+<label>Birth Condition: </label>
+<input id="birth" value="3" onkeydown="
+if (!(/[0-8]/.test(event.key) || event.key == 'Backspace') || this.value.includes(event.key)) {
+event.preventDefault();
+} else {
+this.value = this.value.split('').sort().join('');
+}
+">
+</div>
+<hr>
+<div class="advanced">
+<label>Survival Condition: </label>
+<input id="survival" value="2,3" onkeydown="
+if (!(/[0-8]/.test(event.key) || event.key == 'Backspace') || this.value.includes(event.key)) {
+event.preventDefault();
+} else {
+this.value = this.value.split('').sort().join('');
+}
+">
+</div>
+
+<button onclick="
+width = parseInt(document.getElementById('width').value);
+height = parseInt(document.getElementById('height').value);
+cellSize = parseInt(document.getElementById('cellSize').value);
+tickspeed = parseInt(document.getElementById('tickspeed').value);
+birth = document.getElementById('birth').value.split('').map(e => parseInt(e));
+survival = document.getElementById('survival').value.split(',').map(e => parseInt(e));
+setupGrid();
+clearGrid();
+">Update</button>
+
 <script>
-const canvas = document.getElementById("canvas");
+canvas = document.getElementById("canvas");
+ctx = canvas.getContext("2d");
 canvas.width = innerWidth;
-canvas.height = innerHeight;
-const ctx = canvas.getContext("2d");
+visible = false;
 
-var grid = [
-[0, 1, 0],
-[0, 1, 0],
-[0, 1, 0]
-];
+function text(content, x, y, size, colour) {
+if (!(this instanceof text)) {
+return new text(content, x, y, size, colour);
+}
+this.x = x * 10;
+this.y = y * 10;
+this.size = size;
+this.content = content;
+this.draw = function() {
+ctx.fillStyle = colour;
+ctx.beginPath();
+ctx.font = this.size + "px Comic Sans MS";
+ctx.closePath();
+ctx.fillText(this.content, this.x, this.y);
+}
+}
 
-setInterval(function(){update()}, 10);
-
-function rect(x, y, width, height, color) {
-this.x = x;
-this.y = y;
-this.width = width;
-this.height = height;
-ctx.fillStyle = color;
-ctx.fillRect(x, y, width, height);
-this.draw = function(){
-ctx.fillStyle = color;
+function button(x, y, width, height) {
+if (!(this instanceof button)) {
+return new button(x, y, width, height);
+}
+this.x = x * 10;
+this.y = y * 10;
+this.width = width * 10;
+this.height = height * 10;
+this.top = this.y;
+this.bottom = this.y + this.height;
+this.left = this.x;
+this.right = this.x + this.width;
+this.state = 0;
+this.draw = function() {
+ctx.lineWidth = 4;
+ctx.strokeRect(this.x, this.y, this.width, this.height);
+ctx.fillStyle = "white";
 ctx.fillRect(this.x, this.y, this.width, this.height);
+ctx.lineWidth = 1;
+ctx.fillStyle = "black";
+}
+this.touching = function(object) {
+if (this.bottom >= object.top && this.top <= object.bottom && this.left < object.right && this.right > object.left) {
+return true;
+} else {
+return false;
+}
+}
+}
+
+let width = 40;
+let height = 40;
+let cellSize = 10;
+let tickspeed = 10;
+let birth = [3, 6];
+let survival = [2, 3];
+let grid, control, controlText, clear, clearText, step, stepText, evolveInterval, clickedCell;
+
+function setupGrid() {
+canvas.height = height * cellSize + 5;
+document.getElementById("spacer").style.marginTop = height * cellSize + 10 + "px";
+grid = Array(height).fill().map(e => Array(width).fill(0));
+control = button(width / 10 * cellSize + 1.25, 1, 4, 2);
+controlText = text("Start", width / 10 * cellSize + 1.5, 2.5, 12.5, "black");
+clear = button(width / 10 * cellSize + 1.25, 4, 4, 2);
+clearText = text("Clear", width / 10 * cellSize + 1.5, 5.5, 12.5, "black");
+step = button(width / 10 * cellSize + 6.25, 1, 4, 2);
+stepText = text("Step", width / 10 * cellSize + 6.5, 2.5, 12.5, "black");
+clearInterval(evolveInterval);
+clickedCell = [];
+}
+
+setupGrid();
+
+function update() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.strokeRect(1, 1, 
+cellSize * width, cellSize * height);
+control.draw();
+controlText.draw();
+clear.draw();
+clearText.draw();
+step.draw();
+stepText.draw();
+for (let i in grid) {
+for (let j in grid[i]) {
+if (grid[i][j] == 1) {
+ctx.fillRect(
+cellSize * j + 1, cellSize * i + 1, cellSize, cellSize);
+}
+}
+}
+}
+
+update();
+setInterval(update, 10);
+function updateGrid(event) {
+if (event.clientX < cellSize * grid[0].length && event.clientY < cellSize * grid.length) {
+x = Math.floor(event.clientX / cellSize);
+y = Math.floor(event.clientY / cellSize);
+if ([x, y].join(',') != clickedCell.join(',')) {
+grid[y][x] ^= 1;
+clickedCell = [x, y];
+}
 }
 }
 
 function evolve() {
+let grid2 = [];
 for (let i in grid) {
-for (let j in grid[i]) {
-
-if (grid[i][j]) {
+grid2.push([]);
+for (let e of grid[i]) {
+grid2[i].push(e);
+}
+}
+for (let i = 0; i < height; i++) {
+for (let j = 0; j < width; j++) {
 let neighbours = 0;
-if (i - 1 >= 0 && j - 1 >= 0) {
-if (grid[i - 1][j - 1]) {
+for (let k = -1; k < 2; k++) {
+for (let l = -1; l < 2; l++) {
+if (k != 0 || l != 0) {
+
+//index needs to be in bounds
+if ((k != -1 || i > 0) && (l != -1 || j > 0) && (k != 1 || i < height - 1) && (l != 1 || j < width - 1)) {
+if (grid2[i + k][j + l] == 1) {
 neighbours += 1;
 }
 }
-if (i - 1 >= 0) {
-if (grid[i - 1][j]) {
-neighbours += 1;
-}
-}
-if (i - 1 >= 0 && j + 1 < grid[i].length) {
-if (grid[i - 1][j + 1]) {
-neighbours += 1;
-}
-}
-if (j - 1 >= 0) {
-if (grid[i][j - 1]) {
-neighbours += 1;
-}
-}
-if (j + 1 < grid[i].length) {
-if (grid[i][j + 1]) {
-neighbours += 1;
-}
-}/*
-if (i + 1 < grid.length && j - 1 >= 0) {
-if (grid[i + 1][j - 1]) {
-neighbours += 1;
-}
-}
-if (i + 1 < grid.length && j - 1 >= 0) {
-if (grid[i + 1][j]) {
-neighbours += 1;
-}
-}
-if (i + 1 < grid.length && j + 1 < grid[i].length) {
-if (grid[i + 1][j + 1]) {
-neighbours += 1;
-}
-}
-if (neighbours != 2 || 3) {
-grid[1][1] = 0;
-}*/
 
 }
 }
 }
-}
-
-function update() {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-evolve();
-for (let i in grid) {
-for (let j in grid[i]) {
-if (grid[i][j]) {
-rect(j * 10, i * 10, 10, 10);
-}
-}
-}
-}
-
-canvas.addEventListener("click", (event) => {
-for (let i in grid) {
-for (let j in grid[i]) {
-if (event.offsetX >= j * 10 && event.offsetX < j * 10 + 10 && event.offsetY >= i * 10 && event.offsetY < i * 10 + 10) {
-if (grid[i][j]) {
+if (!survival.includes(neighbours)) {
 grid[i][j] = 0;
-} else {
+}
+if (birth.includes(neighbours) && grid2[i][j] == 0) {
 grid[i][j] = 1;
 }
 }
 }
 }
+
+function clearGrid() {
+grid = Array(height).fill().map(e => Array(width).fill(0));
+control.state = 0;
+clearInterval(evolveInterval);
+control.state = 0;
+controlText.content = "Start";
+}
+
+function onClick(event) {
+updateGrid(event);
+
+let object = {top: event.offsetY, bottom: event.offsetY, left: 
+event.offsetX, right: event.offsetX};
+
+if (control.touching(object)) {
+if (control.state == 0) {
+evolveInterval = setInterval(evolve, 1000 / tickspeed);
+control.state = 1;
+controlText.content = "Stop";
+} else if (control.state == 1) {
+clearInterval(evolveInterval);
+control.state = 0;
+controlText.content = "Start";
+}
+}
+
+if (clear.touching(object)) {
+clearGrid();
+}
+
+if (step.touching(object)) {
+evolve();
+}
+}
+
+canvas.addEventListener("mousedown", (event) => {
+onClick(event);
+canvas.addEventListener('mousemove', updateGrid);
+});
+
+canvas.addEventListener("mouseup", (event) => {
+canvas.removeEventListener('mousemove', updateGrid);
+clickedCell = [];
 });
 </script>
 

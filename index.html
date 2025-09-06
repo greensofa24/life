@@ -74,7 +74,7 @@ this.value = this.value.split('').sort().join('');
 <hr>
 <div class="advanced">
 <label>Survival Condition: </label>
-<input id="survival" value="2,3" onkeydown="
+<input id="survival" value="23" onkeydown="
 if (!(/[0-8]/.test(event.key) || event.key == 'Backspace') || this.value.includes(event.key)) {
 event.preventDefault();
 } else {
@@ -84,12 +84,30 @@ this.value = this.value.split('').sort().join('');
 </div>
 
 <button onclick="
+document.getElementById('birth').value = '3';
+document.getElementById('survival').value = '23';
+document.getElementById('update').click();
+">Standard</button>
+<button onclick="
+document.getElementById('birth').value = '36';
+document.getElementById('survival').value = '23';
+document.getElementById('update').click();
+">HighLife</button>
+<button onclick="
+document.getElementById('birth').value = '2';
+document.getElementById('survival').value = '';
+document.getElementById('update').click();
+">Seeds</button>
+
+<hr>
+
+<button id="update" onclick="
 width = parseInt(document.getElementById('width').value);
 height = parseInt(document.getElementById('height').value);
 cellSize = parseInt(document.getElementById('cellSize').value);
 tickspeed = parseInt(document.getElementById('tickspeed').value);
 birth = document.getElementById('birth').value.split('').map(e => parseInt(e));
-survival = document.getElementById('survival').value.split(',').map(e => parseInt(e));
+survival = document.getElementById('survival').value.split('').map(e => parseInt(e));
 setupGrid();
 clearGrid();
 ">Update</button>

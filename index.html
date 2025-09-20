@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<base href="https://greensofa24.github.io/life/">
 <title>Conway's Game of Life</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
@@ -35,11 +36,6 @@ width: 61px;
 float: right;
 visibility: hidden;
 }
-
-#rulesetDiv {
-float: right;
-visibility: hidden;
-}
 </style>
 </head>
 <body>
@@ -59,14 +55,18 @@ visible = !visible;">Advanced <span id="arrow" style="font-size:12px;">▼</span
 <hr>
 <label>Height: </label>
 <input id="height" value=40 type="number" min=0 max=100>
-<div id="rulesetDiv">
+<div class="advanced allRules">
 <label>Ruleset: </label>
 <select id="ruleset" onchange="
 for (let e of document.getElementsByClassName('advanced')) {
 e.style.display = this.value == 'generations' ? '' : 'none';
+}
+for (let e of document.getElementsByClassName('allRules')) {
+e.style.display = '';
 }">
 <option value="generations" selected>Life-like/Generations</option>
 <option value="wireWorld">WireWorld</option>
+<option value="neumann">29-state rule</option>
 </select>
 </div>
 <input style="visibility: hidden;">
@@ -74,7 +74,7 @@ e.style.display = this.value == 'generations' ? '' : 'none';
 <label>Tickspeed: </label>
 <input id="tickspeed" value=10 type="number" min=0 max=5000>
 <label>tps</label>
-<div class="advanced">
+<div class="advanced allRules">
 <label>Cell Size: </label>
 <input id="cellSize" value=10 type="number" min=0 max=100>
 </div>
@@ -118,10 +118,10 @@ cellSize = parseFloat(document.getElementById('cellSize').value);
 tickspeed = parseInt(document.getElementById('tickspeed').value);
 birth = document.getElementById('birth').value.split('').map(e => parseInt(e));
 survival = document.getElementById('survival').value.split('').map(e => parseInt(e));
-states = parseInt(document.getElementById('states').value);
 birthChance = parseFloat(document.getElementById('birthChance').value);
 nbhType = document.getElementById('nbhType').value;
 ruleset = document.getElementById('ruleset').value;
+states = ruleset == 'wireWorld' ? 4 : ruleset == 'neumann' ? 29 : parseInt(document.getElementById('states').value);
 setupGrid();
 clearGrid();
 ">Update</button>
@@ -169,7 +169,7 @@ this.value = this.value.split('').sort().join('');
 <input style="visibility: hidden;">
 <hr>
 
-<div class="advanced">
+<div class="advanced allRules">
 <button onclick="navigator.clipboard.writeText(JSON.stringify(grid));">Export grid state</button>
 <button onclick="grid = JSON.parse(prompt('Paste JSON'));">Import grid state</button>
 </div>
@@ -258,7 +258,14 @@ let nbhType = "moore";
 let ruleset = "generations";
 //C means colours
 let wireWorldC = ["black", "blue", "red", "yellow"];
+let neumann29src = ["S", "S0", "S00", "S000", "S01", "S1", "S10", "S11", "O0E", "O0N", "O0W", "O0S", "O1E", "O1N", "O1W", "O1S", "S0E", "S0N", "S0W", "S0S", "S1E", "S1N", "S1W", "S1S", "C00", "C11", "C10", "C01"];
 let grid, control, controlText, clear, clearText, step, stepText, rand, randText, evolveInterval, clickedCell;
+let neumann29img = [];
+for (let i in neumann29src) {
+let image = new Image();
+image.src = neumann29src[i] + ".png";
+neumann29img.push(image);
+}
 
 function setupGrid() {
 canvas.height = height * cellSize + 5;
@@ -282,8 +289,6 @@ setupGrid();
 
 function update() {
 ctx.clearRect(0, 0, canvas.width, canvas.height);
-ctx.strokeRect(1, 1,
-cellSize * width, cellSize * height);
 control.draw();
 controlText.draw();
 clear.draw();
@@ -318,8 +323,14 @@ if (ruleset == "wireWorld") {
 ctx.fillStyle = wireWorldC[grid[i][j]];
 ctx.fillRect(cellSize * j + 1, cellSize * i + 1, cellSize, cellSize);
 }
+if (ruleset == "neumann") {
+if (grid[i][j] != 0) {
+ctx.drawImage(neumann29img[grid[i][j] - 1], cellSize * j + 1, cellSize * i + 1, cellSize, cellSize);
 }
 }
+}
+}
+ctx.strokeRect(1, 1, cellSize * width, cellSize * height);
 }
 
 update();
@@ -419,6 +430,153 @@ grid[i][j] = 1;
 }
 }
 }
+
+if (ruleset == "neumann") {
+let signal = [0, 0];
+
+for (let k = -1; k <= 1; k++) {
+if (k != 0) {
+if ((k != -1 || i >= 1) && (k != 1 || i < height - 1)) {
+if (grid2[i + k][j] == 15 - k) {
+signal = [1, signal[1]];
+}
+if (grid2[i + k][j] == 23 - k) {
+signal = [signal[0], 1];
+}
+if ((grid2[i][j] == 11 - k || grid2[i][j] == 15 - k || grid2[i][j] == 19 - k || grid2[i][j] == 23 - k) && grid2[i + k][j] >= 27) {
+signal = [1, signal[1]];
+}
+if (grid2[i][j] >= 25 && grid2[i + k][j] == 11 - k) {
+signal = [0, signal[1]];
+}
+}
+if ((k != -1 || j >= 1) && (k != 1 || j < height - 1)) {
+if (grid2[i][j + k] == 14 + k) {
+signal = [1, signal[1]];
+}
+if (grid2[i][j + k] == 22 + k) {
+signal = [signal[0], 1];
+}
+if ((grid2[i][j] == 10 + k || grid2[i][j] == 14 + k || grid2[i][j] == 18 + k || grid2[i][j] == 22 + k) && grid2[i][j + k] >= 27) {
+signal = [1, signal[1]];
+}
+if (grid2[i][j] >= 25 && grid2[i][j + k] == 10 + k) {
+signal = [0, signal[1]];
+}
+}
+}
+}
+
+if (grid2[i][j] == 0 && (signal[0] || signal[1])) {
+grid[i][j] = 1;
+}
+
+if (grid2[i][j] == 1) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 6;
+} else {
+grid[i][j] = 2;
+}
+}
+
+if (grid2[i][j] == 2) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 5;
+} else {
+grid[i][j] = 3;
+}
+}
+
+if (grid2[i][j] == 3) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 11;
+} else {
+grid[i][j] = 4;
+}
+}
+
+if (grid2[i][j] == 4) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 10;
+} else {
+grid[i][j] = 9;
+}
+}
+
+if (grid2[i][j] == 5) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 17;
+} else {
+grid[i][j] = 12;
+}
+}
+
+if (grid2[i][j] == 6) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 8;
+} else {
+grid[i][j] = 7;
+}
+}
+
+if (grid2[i][j] == 7) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 19;
+} else {
+grid[i][j] = 18;
+}
+}
+
+if (grid2[i][j] == 8) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 25;
+} else {
+grid[i][j] = 20;
+}
+}
+
+if (grid2[i][j] == 25) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 26;
+}
+}
+
+if (grid2[i][j] == 26) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 28;
+} else {
+grid[i][j] = 27;
+}
+}
+
+if (grid2[i][j] == 27) {
+if (signal[0] || signal[1]) {
+grid[i][j] = 26;
+} else {
+grid[i][j] = 25;
+}
+}
+
+if (grid2[i][j] == 28) {
+if (!(signal[0] || signal[1])) {
+grid[i][j] = 27;
+}
+}
+
+if ((((grid2[i][j] >= 9 && grid2[i][j] <= 16) || grid2[i][j] == 25) && signal[1]) || (grid2[i][j] >= 17 && grid2[i][j] <= 24 && signal[0])) {
+grid[i][j] = 0;
+} else {
+if ((grid2[i][j] >= 9 && grid2[i][j] <= 12 && signal[0]) || (grid2[i][j] >= 17 && grid2[i][j] <= 20) && signal[1]) {
+grid[i][j] += 4;
+}
+
+if ((grid2[i][j] >= 13 && grid2[i][j] <= 16 && !signal[0]) || (grid2[i][j] >= 21 && grid2[i][j] <= 24 && !signal[1])) {
+grid[i][j] -= 4;
+}
+}
+
+}
+
 }
 }
 generation++;
